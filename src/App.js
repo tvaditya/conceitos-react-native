@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   SafeAreaView,
@@ -11,45 +11,111 @@ import {
 } from "react-native";
 
 export default function App() {
+
+  const [repositories, setRepositories] = useState([]);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    api.get('repositories').then(response => {
+      setRepositories(response.data);
+      setRefreshing(false);
+    });
+
+  }, [refreshing]);
+
   async function handleLikeRepository(id) {
     // Implement "Like Repository" functionality
+    const response = await api.post(`/repositories/${id}/like`);
+
+    const retRepository = response.data;
+
+    const newRepositories = repositories.map(repository => {
+      if (repository.id === id) {
+        repository.likes = retRepository.likes;
+      }
+      return repository;
+    });
+
+    setRepositories(newRepositories);
+  }
+
+  async function onRefresh() {
+    setRefreshing(true);
+  }
+
+  async function handleDeleteRepository(id) {
+
+    await api.delete(`/repositories/${id}`);
+
+    const indexRepository = repositories.findIndex(repository => repository.id === id);
+    const newRepositories = repositories.map((x) => x);
+    newRepositories.splice(indexRepository, 1);
+    setRepositories(newRepositories);
+
   }
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#7159c1" />
       <SafeAreaView style={styles.container}>
-        <View style={styles.repositoryContainer}>
-          <Text style={styles.repository}>Repository 1</Text>
+        <FlatList
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          data={repositories}
+          keyExtrator={repository => repository.id}
+          renderItem={({ item: repository }) => {
+            return (
+              <View style={styles.repositoryContainer}>
 
-          <View style={styles.techsContainer}>
-            <Text style={styles.tech}>
-              ReactJS
-            </Text>
-            <Text style={styles.tech}>
-              Node.js
-            </Text>
-          </View>
+                <View style={styles.likesContainer}>
+                <Text style={styles.repository}>{repository.title}</Text> 
+                <View >
+                      <Image style={ styles.imageLike } source={{ uri: 'https://publicdomainvectors.org/photos/1425710397.png' }}/>
+                      
+                      <Text
+                        style={styles.likeText}
+                        testID={`repository-likes-${repository.id}`}
+                      >
+                    {`${repository.likes}`}
+                  </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.techsContainer}>
+                  {repository.techs.map(tech => {
+                    return (
 
-          <View style={styles.likesContainer}>
-            <Text
-              style={styles.likeText}
-              // Remember to replace "1" below with repository ID: {`repository-likes-${repository.id}`}
-              testID={`repository-likes-1`}
-            >
-              3 curtidas
-            </Text>
-          </View>
+                      <Text key={tech} style={styles.tech}>
+                        {tech}
+                      </Text>
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => handleLikeRepository(1)}
-            // Remember to replace "1" below with repository ID: {`like-button-${repository.id}`}
-            testID={`like-button-1`}
-          >
-            <Text style={styles.buttonText}>Curtir</Text>
-          </TouchableOpacity>
-        </View>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.viewButton}>
+                <TouchableOpacity 
+                style={ styles.buttonContainer }
+                onPress={() => handleLikeRepository(repository.id)}
+                testID={`like-button-${repository.id}`}
+                >  
+                    <Image style={ styles.imageButton } source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQsOZyWXcA-JZXt2nF9CfkSrsYH_PU1mgDFbQ&usqp=CAU' }} />
+                </TouchableOpacity> 
+                  <TouchableOpacity
+                    style={styles.buttonContainer}
+                    onPress={() => handleDeleteRepository(repository.id)}
+                  >
+                     <Image style={ styles.imageButton } source={{ uri: 'https://cdn.icon-icons.com/icons2/1150/PNG/512/1486504830-delete-dustbin-empty-recycle-recycling-remove-trash_81361.png' }} />
+                     
+                  </TouchableOpacity>
+                </View>
+
+              </View>
+            );
+          }} />
+
       </SafeAreaView>
     </>
   );
@@ -67,7 +133,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   repository: {
+    flex: 1,
     fontSize: 32,
+    color: "#6687c4",
     fontWeight: "bold",
   },
   techsContainer: {
@@ -89,9 +157,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   likeText: {
-    fontSize: 14,
+    fontSize: 20,
+    color: "#6687c4",
     fontWeight: "bold",
-    marginRight: 10,
+    textAlign: "center",
+    
+  },
+  imageLike: {
+    height:48,
+    width: 48,
+    borderRadius: 48,
+    marginLeft: 5,
+  },
+  viewButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
   },
   button: {
     marginTop: 10,
@@ -104,4 +185,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#7159c1",
     padding: 15,
   },
+  buttonContainer: {
+    height:48,
+    width: 48,
+    borderRadius: 48
+  },
+  imageButton: {
+    height:48,
+    width: 48,
+    borderRadius: 48
+  },
+
 });
